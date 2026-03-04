@@ -43,8 +43,14 @@ def inject_css():
         section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label p {{
             color: #FFFFFF !important;
         }}
-        section[data-testid="stSidebar"] * {{
-            color: #FFFFFF;
+        section[data-testid="stSidebar"] .stButton > button {{
+            color: #FFFFFF !important;
+            background-color: rgba(255,255,255,0.12) !important;
+            border: 1px solid rgba(255,255,255,0.25) !important;
+        }}
+        section[data-testid="stSidebar"] .stButton > button:hover {{
+            background-color: rgba(255,255,255,0.22) !important;
+            border-color: rgba(255,255,255,0.5) !important;
         }}
 
         /* ── Global widget labels ── */
@@ -131,6 +137,29 @@ def inject_css():
         .stDataFrame {{
             border-radius: 8px;
             overflow: hidden;
+        }}
+
+        /* ── AI Agent FAB preview bubble (fixed position) ── */
+        .ai-fab-preview {{
+            position: fixed;
+            bottom: 5.8rem;
+            right: 2.2rem;
+            z-index: 999998;
+            background: rgba(20, 26, 38, 0.96);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 9px 14px;
+            max-width: 280px;
+            font-size: 0.82rem;
+            line-height: 1.4;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }}
+        .ai-fab-preview-body {{
+            color: #BBBBBB;
+            font-size: 0.75rem;
+            margin-top: 3px;
+            font-weight: 400;
         }}
     </style>
     """, unsafe_allow_html=True)
