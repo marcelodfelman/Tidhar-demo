@@ -30,7 +30,7 @@ def show_ai_agent():
 
 # ── Sidebar ─────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🏗️ Deeply × Tidhar")
+    st.markdown("## 🏗️ Deeply - Hospitality Demo")
     st.markdown("### 2026 Strategic Portal")
     st.markdown("---")
 
