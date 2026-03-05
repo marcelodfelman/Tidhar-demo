@@ -27,6 +27,7 @@ from data import (
     BASELINE_EBITDA,
     SATISFACTION_SCORES,
     ALOS_BY_MONTH,
+    EPOR_BENCHMARK,
     df_monthly_income,
     df_costs,
     df_revenue_per_unit,
@@ -36,6 +37,8 @@ from data import (
     df_occupancy_trend,
     df_cap_table,
     df_tenants,
+    df_cpor_monthly,
+    df_epor_project,
 )
 
 # ─── Shared chart layout ──────────────────────────────────────────────────────
@@ -45,7 +48,7 @@ _CHART_LAYOUT = dict(
     plot_bgcolor=CARD_BG,
     font=dict(color="#E8E8E8", size=11),
     margin=dict(l=44, r=20, t=38, b=40),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10, orientation="h", y=1.12),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10, font_color="#E8E8E8", orientation="h", y=1.12),
 )
 
 
@@ -113,24 +116,56 @@ def render() -> None:
     staff_room    = round(staff_total / TOTAL_ROOMS, 3)
     avg_sat       = round(sum(SATISFACTION_SCORES.values()) / len(SATISFACTION_SCORES), 1)
     avg_alos      = round(sum(ALOS_BY_MONTH) / len(ALOS_BY_MONTH), 1)
+    # ── Trend Indicators (vs. prior month in sliced period) ───────────────────
+    def _pct_change_trend(series, invert=False):
+        """Return (arrow_str, color) for MoM % change."""
+        if len(series) < 2:
+            return ("", "")
+        cur, prev = float(series.iloc[-1]), float(series.iloc[-2])
+        if prev == 0:
+            return ("", "")
+        pct = (cur - prev) / abs(prev) * 100
+        positive = pct > 0 if not invert else pct < 0
+        if abs(pct) < 0.05:
+            return ("─", YELLOW)
+        arrow = "▲" if pct > 0 else "▼"
+        color = ACCENT if positive else RED
+        return (f"{arrow} {abs(pct):.1f}%", color)
 
+    tr_rev, tc_rev       = _pct_change_trend(s_income["Total"])
+    tr_revpar, tc_revpar = _pct_change_trend(s_rev_pu["RevPAR (₪)"])
+    tr_adr, tc_adr       = _pct_change_trend(s_rev_pu["ADR (₪)"])
+    tr_goppar, tc_goppar = _pct_change_trend(s_rev_pu["GOPPAR (₪)"])
+    _noi_s               = s_income["Total"] - s_costs["Total (₪)"]
+    tr_noi, tc_noi       = _pct_change_trend(_noi_s)
+    _op_m_s              = _noi_s / s_income["Total"] * 100
+    tr_opm, tc_opm       = _pct_change_trend(_op_m_s)
+    _occ_mean_s          = s_occ[_occ_cols].mean(axis=1)
+    tr_occ, tc_occ       = _pct_change_trend(_occ_mean_s)
+    tr_vac, tc_vac       = _pct_change_trend(100 - _occ_mean_s, invert=True)
+    s_cpor               = _slice(df_cpor_monthly, start_idx, end_idx)
+    tr_cpor, tc_cpor     = _pct_change_trend(s_cpor["CPOR (₪)"], invert=True)
+    avg_epor             = float(df_epor_project["EPOR (kWh)"].mean())
+    _high_risk           = df_tenants[df_tenants["Churn Risk"] >= 0.60]
+    rev_at_risk_monthly  = int(_high_risk["Monthly Rent (₪)"].sum())
+    rev_at_risk_annual   = rev_at_risk_monthly * 12
     # ─────────────────────────────────────────────────────────────────────────
     # TIER 1 — Revenue & Efficiency
     # ─────────────────────────────────────────────────────────────────────────
     section_header("Tier 1 — Revenue & Efficiency")
     t1 = st.columns(7)
     with t1[0]:
-        kpi_card("Total Revenue",   f"₪{total_rev / 1e6:.1f}M",  f"{n_months}-month period")
+        kpi_card("Total Revenue",   f"₪{total_rev / 1e6:.1f}M",  f"{n_months}-month period", tr_rev, tc_rev)
     with t1[1]:
-        kpi_card("RevPAR",          f"₪{avg_revpar:,}",           "Rev / available room")
+        kpi_card("RevPAR",          f"₪{avg_revpar:,}",           "Rev / available room", tr_revpar, tc_revpar)
     with t1[2]:
-        kpi_card("ADR",             f"₪{avg_adr:,}",              "Avg daily rate")
+        kpi_card("ADR",             f"₪{avg_adr:,}",              "Avg daily rate", tr_adr, tc_adr)
     with t1[3]:
-        kpi_card("GOPPAR",          f"₪{avg_goppar:,}",           "Gross op. profit / room")
+        kpi_card("GOPPAR",          f"₪{avg_goppar:,}",           "Gross op. profit / room", tr_goppar, tc_goppar)
     with t1[4]:
-        kpi_card("NOI",             f"₪{noi / 1e6:.1f}M",         "Net operating income")
+        kpi_card("NOI",             f"₪{noi / 1e6:.1f}M",         "Net operating income", tr_noi, tc_noi)
     with t1[5]:
-        kpi_card("Operating Margin",f"{op_margin:.1f}%",           "NOI / Revenue")
+        kpi_card("Operating Margin",f"{op_margin:.1f}%",           "NOI / Revenue", tr_opm, tc_opm)
     with t1[6]:
         kpi_card("EBITDA Margin",   f"{ebitda_marg:.1f}%",         "EBITDA / Revenue")
 
@@ -142,15 +177,20 @@ def render() -> None:
     section_header("Tier 2 — Operations & Asset")
     t2 = st.columns(7)
     with t2[0]:
-        kpi_card("Avg Occupancy",     f"{avg_occ:.1f}%",              "Portfolio avg")
+        kpi_card("Avg Occupancy",     f"{avg_occ:.1f}%",              "Portfolio avg", tr_occ, tc_occ)
     with t2[1]:
-        kpi_card("Vacancy Rate",      f"{vacancy:.1f}%",              "Unoccupied capacity")
+        kpi_card("Vacancy Rate",      f"{vacancy:.1f}%",              "Unoccupied capacity", tr_vac, tc_vac)
     with t2[2]:
-        kpi_card("CPOR",              f"₪{cpor:,.0f}",                "Cost / occ. room / mo")
+        kpi_card("CPOR",              f"₪{cpor:,.0f}",                "Cost / occ. room / mo", tr_cpor, tc_cpor)
     with t2[3]:
-        kpi_card("Tenant Retention",  f"{tenant_ret:.1f}%",           "1 − avg churn risk")
+        _epor_above = avg_epor > EPOR_BENCHMARK
+        kpi_card("EPOR",              f"{avg_epor:.1f} kWh",
+                 f"Benchmark: {EPOR_BENCHMARK:.0f} kWh",
+                 "▲ Above" if _epor_above else "▼ Below",
+                 RED if _epor_above else ACCENT)
     with t2[4]:
-        kpi_card("Staff Available",   str(staff_avail),               f"of {staff_total} total")
+        kpi_card("₪ Rev. at Risk",    f"₪{rev_at_risk_annual / 1e6:.1f}M/yr",
+                 f"{len(_high_risk)} high-risk tenants")
     with t2[5]:
         kpi_card("Staff / Room",      f"{staff_room:.3f}",            f"{staff_total} ÷ {TOTAL_ROOMS}")
     with t2[6]:
@@ -200,31 +240,147 @@ def render() -> None:
         st.plotly_chart(fig1, use_container_width=True)
 
     with r1c2:
-        section_header("RevPAR / ADR / GOPPAR Trend")
-        fig2 = go.Figure()
-        _pu_series = [
-            ("RevPAR (₪)",  ACCENT),
-            ("ADR (₪)",     "#0077FF"),
-            ("GOPPAR (₪)",  YELLOW),
-        ]
-        for col, color in _pu_series:
-            fig2.add_trace(go.Scatter(
-                x=months_x,
-                y=s_rev_pu[col].tolist(),
-                name=col,
-                mode="lines+markers",
-                line=dict(color=color, width=2),
-                marker=dict(size=5),
-            ))
-        fig2.update_layout(
-            height=320,
-            **_CHART_LAYOUT,
-            yaxis=dict(gridcolor="#2A2F3B", tickformat=",", title="₪ / Room"),
+        section_header("RevPAR Decomposition — Rate vs. Volume")
+        _occ_pct_series = s_occ[_occ_cols].mean(axis=1).values
+        fig2 = make_subplots(specs=[[{"secondary_y": True}]])
+        fig2.add_trace(
+            go.Bar(
+                x=months_x, y=_occ_pct_series.tolist(),
+                name="Occupancy %", marker_color=ACCENT, opacity=0.45,
+            ),
+            secondary_y=True,
         )
+        fig2.add_trace(
+            go.Scatter(
+                x=months_x, y=s_rev_pu["ADR (₪)"].tolist(),
+                name="ADR (₪)", mode="lines+markers",
+                line=dict(color="#0077FF", width=2.5), marker=dict(size=5),
+            ),
+            secondary_y=False,
+        )
+        fig2.add_trace(
+            go.Scatter(
+                x=months_x, y=s_rev_pu["RevPAR (₪)"].tolist(),
+                name="RevPAR (₪)", mode="lines+markers",
+                line=dict(color=YELLOW, width=2, dash="dash"), marker=dict(size=4),
+            ),
+            secondary_y=False,
+        )
+        fig2.update_layout(height=320, **_CHART_LAYOUT)
+        fig2.update_yaxes(title_text="₪ / Room", secondary_y=False,
+                          gridcolor="#2A2F3B", tickformat=",")
+        fig2.update_yaxes(title_text="Occupancy %", secondary_y=True,
+                          gridcolor="#2A2F3B", range=[0, 100])
         st.plotly_chart(fig2, use_container_width=True)
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # ROW 2 — Room Availability  |  Manpower
+    # ─────────────────────────────────────────────────────────────────────────    # ROW 1b — GOPPAR vs CPOR Spread  |  EPOR by Project
+    # ─────────────────────────────────────────────────────────────────────
+    r1b_c1, r1b_c2 = st.columns(2)
+
+    with r1b_c1:
+        section_header("GOPPAR vs. CPOR — Efficiency Spread")
+        _cpor_vals = s_cpor["CPOR (₪)"].tolist()
+        fig_sp = go.Figure()
+        fig_sp.add_trace(go.Scatter(
+            x=months_x, y=s_rev_pu["GOPPAR (₪)"].tolist(),
+            name="GOPPAR (₪)", mode="lines+markers",
+            line=dict(color=ACCENT, width=2.5), marker=dict(size=5),
+        ))
+        fig_sp.add_trace(go.Scatter(
+            x=months_x, y=_cpor_vals,
+            name="CPOR (₪)", mode="lines+markers",
+            line=dict(color=RED, width=2.5), marker=dict(size=5),
+        ))
+        fig_sp.update_layout(
+            height=320, **_CHART_LAYOUT,
+            yaxis=dict(gridcolor="#2A2F3B", tickformat=",", title="₪ / Room"),
+        )
+        st.plotly_chart(fig_sp, use_container_width=True)
+
+    with r1b_c2:
+        section_header("Energy per Occupied Room (EPOR)")
+        _epor_sorted = df_epor_project.sort_values("EPOR (kWh)", ascending=True)
+        _epor_colors = [RED if v > EPOR_BENCHMARK else ACCENT
+                        for v in _epor_sorted["EPOR (kWh)"]]
+        fig_ep = go.Figure(go.Bar(
+            x=_epor_sorted["EPOR (kWh)"].tolist(),
+            y=_epor_sorted["Project"].tolist(),
+            orientation="h", marker_color=_epor_colors,
+            text=[f"{v:.1f} kWh" for v in _epor_sorted["EPOR (kWh)"]],
+            textposition="outside", opacity=0.9,
+        ))
+        fig_ep.add_vline(
+            x=EPOR_BENCHMARK, line_dash="dash", line_color=YELLOW,
+            annotation_text=f"Benchmark: {EPOR_BENCHMARK:.0f} kWh",
+            annotation_position="top right",
+            annotation_font_color=YELLOW,
+        )
+        fig_ep.update_layout(
+            height=320, **_CHART_LAYOUT,
+            xaxis=dict(gridcolor="#2A2F3B", title="kWh / Occupied Room"),
+            yaxis=dict(gridcolor="#2A2F3B"),
+        )
+        st.plotly_chart(fig_ep, use_container_width=True)
+
+    # ─────────────────────────────────────────────────────────────────────
+    # RETENTION INTELLIGENCE — Tenant Churn Risk
+    # ─────────────────────────────────────────────────────────────────────
+    section_header("🔒 Retention Intelligence — Tenant Churn Risk")
+    ri_c1, ri_c2 = st.columns(2)
+
+    with ri_c1:
+        _churn_sorted = df_tenants.sort_values("Churn Risk", ascending=True)
+        _risk_colors = [RED if r >= 0.60 else YELLOW if r >= 0.30 else ACCENT
+                        for r in _churn_sorted["Churn Risk"]]
+        fig_ch = go.Figure(go.Bar(
+            x=_churn_sorted["Churn Risk"].tolist(),
+            y=_churn_sorted["Tenant"].tolist(),
+            orientation="h", marker_color=_risk_colors,
+            text=[f"{r:.0%}" for r in _churn_sorted["Churn Risk"]],
+            textposition="outside", opacity=0.9,
+        ))
+        fig_ch.update_layout(
+            height=440, **_CHART_LAYOUT,
+            xaxis=dict(range=[0, 1.15], gridcolor="#2A2F3B",
+                       title="Churn Risk Score", tickformat=".0%"),
+            yaxis=dict(gridcolor="#2A2F3B"),
+        )
+        st.plotly_chart(fig_ch, use_container_width=True)
+
+    with ri_c2:
+        _tl = df_tenants.copy()
+        _tl["Expiry"] = pd.to_datetime(_tl["Lease Expiry"])
+        _sev_map = {"🔴 High Risk": RED, "🟡 Medium": YELLOW, "🟢 Low": ACCENT}
+        _tl_colors = [_sev_map.get(r, ACCENT) for r in _tl["Risk Level"]]
+        fig_tl = go.Figure(go.Scatter(
+            x=_tl["Expiry"], y=_tl["Monthly Rent (₪)"],
+            mode="markers+text",
+            marker=dict(size=14, color=_tl_colors, opacity=0.85,
+                        line=dict(width=1, color="#FFFFFF")),
+            text=_tl["Tenant"], textposition="top center",
+            textfont=dict(size=8, color="#E8E8E8"),
+        ))
+        fig_tl.update_layout(
+            height=440, **_CHART_LAYOUT,
+            xaxis=dict(gridcolor="#2A2F3B", title="Lease Expiry Date"),
+            yaxis=dict(gridcolor="#2A2F3B", tickformat=",", title="Monthly Rent (₪)"),
+        )
+        st.plotly_chart(fig_tl, use_container_width=True)
+
+    _at_risk_display = (
+        df_tenants[df_tenants["Churn Risk"] >= 0.30]
+        .sort_values("Churn Risk", ascending=False)
+        [["Tenant", "Project", "Risk Level", "Churn Risk", "Monthly Rent (₪)", "Lease Expiry"]]
+    )
+    if not _at_risk_display.empty:
+        st.dataframe(
+            _at_risk_display.style.format({
+                "Churn Risk": "{:.1%}", "Monthly Rent (₪)": "₪{:,.0f}",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+
+    # ─────────────────────────────────────────────────────────────────────    # ROW 2 — Room Availability  |  Manpower
     # ─────────────────────────────────────────────────────────────────────────
     r2c1, r2c2 = st.columns(2)
 

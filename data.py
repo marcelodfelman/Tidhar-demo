@@ -386,6 +386,29 @@ df_cap_table = pd.DataFrame({
     "GRM":                [18.2, 19.2, 20.8, 17.7, 18.4],
 })
 
+# ── CPOR Monthly Series (Cost per Occupied Room) ─────────────────────────────
+_occ_avg_frac_series = (
+    df_occupancy_trend[[c for c in df_occupancy_trend.columns if c != "Month"]]
+    .mean(axis=1) / 100.0
+)
+_occupied_rooms_monthly = (_occ_avg_frac_series * TOTAL_ROOMS).round(0).clip(lower=1)
+df_cpor_monthly = pd.DataFrame({
+    "Month": MONTHS,
+    "CPOR (₪)": (df_costs["Total (₪)"] / _occupied_rooms_monthly).round(0).astype(int),
+})
+
+# ── EPOR per Project (Energy per Occupied Room, latest snapshot) ──────────────
+EPOR_BENCHMARK = 150.0   # kWh per occupied room/month — portfolio benchmark
+_epor_rows = []
+for _p in PROJECTS:
+    _occ = df_projects.loc[df_projects["Project"] == _p, "Occupancy (%)"].values[0]
+    _kwh = df_projects.loc[df_projects["Project"] == _p, "Energy (kWh)"].values[0]
+    _rms = ROOMS_PER_PROJECT[_p]
+    _occ_rms = max(_occ / 100.0 * _rms, 1)
+    _epor_rows.append({"Project": _p, "EPOR (kWh)": round(_kwh / _occ_rms, 1),
+                        "Occupied Rooms": int(_occ_rms), "Energy (kWh)": _kwh})
+df_epor_project = pd.DataFrame(_epor_rows)
+
 # ─────────────────────────────────────────────
 # 6. MOCK AI DOCUMENT EXTRACTION
 # ─────────────────────────────────────────────

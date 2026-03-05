@@ -1,5 +1,5 @@
 """
-app.py — Tidhar Decision Intelligence Portal
+app.py — Hospitality Decision Intelligence Portal
 Main Streamlit entrypoint: sidebar navigation, KPI header, module routing.
 
 Run:  streamlit run app.py
@@ -9,7 +9,7 @@ import streamlit as st
 
 # ── Page config (MUST be first Streamlit call) ──
 st.set_page_config(
-    page_title="Deeply × Tidhar | Strategic Portal",
+    page_title="Deeply | Hospitality Strategic Portal",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -50,7 +50,7 @@ with st.sidebar:
     st.markdown(
         "<div style='font-size:0.75rem; color:#AAAAAA; text-align:center;'>"
         "Live Strategic Prototype<br>"
-        "Built by <b>Deeply</b> for <b>Tidhar Group</b><br>"
+        "Built by <b>Deeply</b> for <b>Hospitality Industry</b><br>"
         "March 2026"
         "</div>",
         unsafe_allow_html=True,

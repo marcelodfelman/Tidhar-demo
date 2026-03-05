@@ -80,6 +80,9 @@ All data is hardcoded in `data.py`. This is the **single source of truth** — n
 | `TENANTS_AT_RISK` | int | Count of tenants with churn risk ≥ 0.60 |
 | `compute_churn_scores()` | function | Recalculates churn scores with given weights |
 | `apply_risk_labels()` | function | Applies Low/Medium/High labels to a scored DataFrame |
+| `df_cpor_monthly` | DataFrame | 12-month CPOR series: `Month`, `CPOR (₪)` |
+| `df_epor_project` | DataFrame | EPOR per project: `Project`, `EPOR (kWh)`, `Occupied Rooms`, `Energy (kWh)` |
+| `EPOR_BENCHMARK` | float | 150.0 kWh — target benchmark for energy per occupied room |
 
 ### Churn score model
 
@@ -123,7 +126,7 @@ YELLOW  = "#FFD93D"   # warnings
 | Function | Usage |
 |---|---|
 | `inject_css()` | Call once at top of `app.py`. Injects all global styles. |
-| `kpi_card(label, value, delta)` | Renders a dark themed KPI metric card. |
+| `kpi_card(label, value, delta, trend, trend_color)` | Renders a dark themed KPI metric card. `trend` = arrow text (e.g. `"▲ 2.1%"`), `trend_color` = hex color for the arrow (defaults to `ACCENT`). |
 | `section_header(title)` | Renders a section heading with teal underline. |
 | `alert_card(title, body)` | Renders a red-bordered alert card. |
 
@@ -158,6 +161,13 @@ Each module exports a single `render()` function called by the page router in `a
 - Interactive EBITDA scenario modeler
 - Sliders for occupancy, rent, energy cost assumptions
 - Renders Plotly waterfall / bar charts
+
+### `analytics_dashboard.py`
+- PowerBI-style KPI dashboard with 14 cards (7 Tier 1 + 7 Tier 2) and 8 chart panels
+- **Phase 1 additions:** RevPAR Decomposition (dual-axis), GOPPAR vs CPOR Spread, EPOR by Project, Retention Intelligence (churn risk waterfall + expiry scatter + at-risk table)
+- **KPI trend indicators:** ▲/▼ with MoM % change color-coded (green = positive, red = negative)
+- **Replaced KPIs:** "Staff Available" → EPOR, "Tenant Retention" → ₪ Revenue at Risk
+- Uses shared `_CHART_LAYOUT` dict for consistent Plotly styling across all charts
 
 ### `doc_intelligence.py`
 - AI document analysis simulation
@@ -454,6 +464,38 @@ st.markdown("<script>window.history.replaceState(...);</script>",
 - Use `streamlit.components.v1.html("<script>...</script>", height=0)` instead.
 - Access the main Streamlit document from the component iframe via `window.parent.document`.
 - For security, the component must be same-origin (localhost during dev, same domain in production).
+
+---
+
+### Bug 3 — Plotly chart legends: invisible text (dark on dark)
+
+**Symptom:** Legend labels in Analytics Dashboard charts were the same color as the dark background — completely invisible.
+
+**Root cause:** Plotly's `plotly_dark` template sets a default legend font color that blends into the custom `paper_bgcolor=CARD_BG` (`#1A1F2B`). The shared `_CHART_LAYOUT` dict defined `font=dict(color="#E8E8E8")` for **axis/title** text, but the `legend` sub-dict did **not** inherit this color — it used Plotly's template default, which was near-black.
+
+```python
+# ❌ WRONG — legend font color not explicitly set, inherits dark template default
+_CHART_LAYOUT = dict(
+    template="plotly_dark",
+    paper_bgcolor=CARD_BG,
+    font=dict(color="#E8E8E8", size=11),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10, orientation="h", y=1.12),
+)
+```
+
+**Fix:** Always set `font_color` explicitly in the legend dict:
+
+```python
+# ✅ CORRECT — legend text is explicitly light-colored
+_CHART_LAYOUT = dict(
+    template="plotly_dark",
+    paper_bgcolor=CARD_BG,
+    font=dict(color="#E8E8E8", size=11),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10, font_color="#E8E8E8", orientation="h", y=1.12),
+)
+```
+
+**Rule:** When using a custom `paper_bgcolor` with Plotly dark templates, **always set explicit `font_color` on legends, axis titles, and tick labels**. Plotly's template defaults assume the standard template background and may not contrast with custom backgrounds.
 
 ---
 

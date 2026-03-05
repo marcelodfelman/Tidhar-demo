@@ -2,7 +2,7 @@
 **Feature:** `📈 Analytics Dashboard` — PowerBI-style business intelligence section  
 **Date:** March 2, 2026  
 **Author:** GitHub Copilot / Deeply  
-**Status:** ✅ Implemented
+**Status:** ✅ Implemented (Phase 1 Quick Wins applied March 2026)
 
 ---
 
@@ -11,9 +11,10 @@
 A new **Analytics Dashboard** module added to the Tidhar Decision Intelligence Portal. It delivers a PowerBI-style layout with:
 
 - **Time-range filter** — `st.select_slider()` over the portfolio's 12-month window
-- **Tier 1 KPIs** — 7 revenue & efficiency cards
-- **Tier 2 KPIs** — 7 operations & asset cards
-- **6 chart panels** — arranged in a 2-column × 3-row grid
+- **Tier 1 KPIs** — 7 revenue & efficiency cards with ▲/▼ MoM trend indicators
+- **Tier 2 KPIs** — 7 operations & asset cards (EPOR + ₪ Revenue at Risk replaced Staff Available + Tenant Retention)
+- **8 chart panels** — arranged in a 2-column grid (original 6 + RevPAR Decomposition + GOPPAR/CPOR Spread + EPOR)
+- **Retention Intelligence** — churn risk waterfall + lease expiry scatter + at-risk data table
 - **Asset Ratio Table** — per-project Cap Rate, GRM, NOI (point-in-time)
 - **ALOS footnote** — Average Length of Stay / Lease as a single `st.metric`
 
@@ -78,19 +79,30 @@ render()
  ├── Time filter  [st.select_slider → (start_idx, end_idx)]
  ├── _slice() helper — slices all DataFrames to selected period
  ├── Derived aggregates (total_rev, noi, op_margin, avg_occ, cpor, …)
+ ├── Trend indicators (▲/▼ MoM % change for each applicable KPI)
  │
  ├── section_header("Tier 1 — Revenue & Efficiency")
- │    └── st.columns(7) → 7 × kpi_card()
+ │    └── st.columns(7) → 7 × kpi_card() with trend arrows
  │         Total Revenue | RevPAR | ADR | GOPPAR | NOI | Op. Margin | EBITDA Margin
  │
  ├── section_header("Tier 2 — Operations & Asset")
- │    └── st.columns(7) → 7 × kpi_card()
- │         Avg Occupancy | Vacancy Rate | CPOR | Tenant Retention |
- │         Staff Available | Staff/Room Ratio | Avg Satisfaction
+ │    └── st.columns(7) → 7 × kpi_card() with trend arrows
+ │         Avg Occupancy | Vacancy Rate | CPOR | EPOR |
+ │         ₪ Rev. at Risk | Staff/Room Ratio | Avg Satisfaction
  │
  ├── Row 1 — st.columns(2)
  │    ├── Income & NOI Trend  [go.Bar + go.Scatter, dual-axis]
- │    └── RevPAR / ADR / GOPPAR Trend  [3-line go.Scatter]
+ │    └── RevPAR Decomposition — Rate vs. Volume  [dual-axis: Occ% bars + ADR/RevPAR lines]
+ │
+ ├── Row 1b — st.columns(2)
+ │    ├── GOPPAR vs. CPOR — Efficiency Spread  [dual-line: green GOPPAR vs red CPOR]
+ │    └── Energy per Occupied Room (EPOR)  [horizontal go.Bar + benchmark vline]
+ │
+ ├── Retention Intelligence — Tenant Churn Risk
+ │    ├── st.columns(2)
+ │    │    ├── Churn Risk Waterfall  [horizontal go.Bar, color by risk tier]
+ │    │    └── Lease Expiry Scatter  [go.Scatter: x=expiry, y=rent, color=risk]
+ │    └── At-Risk Tenant Table  [st.dataframe, sorted by churn risk desc]
  │
  ├── Row 2 — st.columns(2)
  │    ├── Room Availability by Type  [grouped go.Bar]
@@ -106,15 +118,21 @@ render()
 
 ### 4.2 Styling Rules
 
-All charts use:
+All charts use a shared `_CHART_LAYOUT` dict:
 ```python
-template="plotly_dark"
-paper_bgcolor = CARD_BG   # "#1A1F2B"
-plot_bgcolor  = CARD_BG
-font          = dict(color="#E8E8E8", size=11)
+_CHART_LAYOUT = dict(
+    template="plotly_dark",
+    paper_bgcolor=CARD_BG,
+    plot_bgcolor=CARD_BG,
+    font=dict(color="#E8E8E8", size=11),
+    margin=dict(l=44, r=20, t=38, b=40),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10, font_color="#E8E8E8", orientation="h", y=1.12),
+)
 ```
 
-KPI cards use existing `style.kpi_card()`. Section dividers use existing `style.section_header()`.
+**⚠️ CRITICAL:** The `legend` dict must include `font_color="#E8E8E8"`. Plotly's `plotly_dark` template uses a default legend font color that does NOT contrast against custom `paper_bgcolor` values like `CARD_BG` (`#1A1F2B`). Without an explicit `font_color`, legend labels are invisible (dark on dark). See DEVELOPER_NOTES.md Bug 3.
+
+KPI cards use `style.kpi_card(label, value, delta, trend, trend_color)`. Section dividers use `style.section_header()`.
 
 ### 4.3 Time Filter Slicing
 
@@ -147,8 +165,8 @@ end_idx   = MONTHS.index(month_range[1])
 | 1 | **Avg Occupancy** | Mean of `df_occupancy_trend` project cols (period) | 2 |
 | 2 | **Vacancy Rate** | `100% − Avg Occupancy` | 2 |
 | 3 | **CPOR** | `Total Costs ÷ Occupied Rooms ÷ Months` | 2 |
-| 4 | **Tenant Retention** | `(1 − mean(Churn Risk)) × 100%` | 2 |
-| 5 | **Staff Available** | `df_manpower["Available"].iloc[-1]` | 2 |
+| 4 | **EPOR** | `Energy (kWh) ÷ Occupied Rooms` per project; benchmark = 150 kWh | 2 |
+| 5 | **₪ Rev. at Risk** | `Sum(Monthly Rent)` for tenants with Churn Risk ≥ 0.60 × 12 | 2 |
 | 6 | **Staff / Room Ratio** | `Total Headcount ÷ TOTAL_ROOMS` | 2 |
 | 7 | **Avg Satisfaction** | `mean(SATISFACTION_SCORES.values())` | 2 |
 

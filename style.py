@@ -165,13 +165,17 @@ def inject_css():
     """, unsafe_allow_html=True)
 
 
-def kpi_card(label: str, value: str, delta: str = ""):
-    """Render a styled KPI metric card."""
+def kpi_card(label: str, value: str, delta: str = "", trend: str = "", trend_color: str = ""):
+    """Render a styled KPI metric card with optional trend indicator."""
     delta_html = f'<div class="delta">{delta}</div>' if delta else ""
+    trend_html = ""
+    if trend:
+        tc = trend_color or ACCENT
+        trend_html = f'<span style="font-size:0.82rem; color:{tc}; font-weight:600; margin-left:6px;">{trend}</span>'
     st.markdown(f"""
     <div class="kpi-card">
         <div class="label">{label}</div>
-        <div class="value">{value}</div>
+        <div class="value">{value}{trend_html}</div>
         {delta_html}
     </div>
     """, unsafe_allow_html=True)
