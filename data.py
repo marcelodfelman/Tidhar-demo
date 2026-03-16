@@ -333,7 +333,9 @@ df_costs["Total (₪)"] = (
 # ── Revenue-per-Unit Series ───────────────────────────────────────────────────
 # All columns derived from df_monthly_income and room/headcount constants
 _occ_proj_cols  = [c for c in df_occupancy_trend.columns if c != "Month"]
-_avg_occ_series = df_occupancy_trend[_occ_proj_cols].mean(axis=1).values / 100.0
+_avg_occ_series = pd.to_numeric(
+    df_occupancy_trend[_occ_proj_cols].mean(axis=1), errors="coerce"
+).fillna(0.0).to_numpy(dtype=float) / 100.0
 _occupied_rooms = (_avg_occ_series * TOTAL_ROOMS).round(0)
 _headcount_base = np.array([158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 170], dtype=float)
 
@@ -408,6 +410,417 @@ for _p in PROJECTS:
     _epor_rows.append({"Project": _p, "EPOR (kWh)": round(_kwh / _occ_rms, 1),
                         "Occupied Rooms": int(_occ_rms), "Energy (kWh)": _kwh})
 df_epor_project = pd.DataFrame(_epor_rows)
+
+# ─────────────────────────────────────────────
+# 5c. CONSTRUCTION PROJECT MANAGER DATA (MVP)
+#     Synthetic but coherent construction data used by
+#     modules/construction_pm.py.
+# ─────────────────────────────────────────────
+
+CONSTRUCTION_PROJECTS = [
+    "Ramat Gan North Towers",
+    "Holon Mixed-Use Campus",
+    "Jerusalem Central Offices",
+    "Haifa Waterfront Residences",
+    "Beer Sheva Innovation Hub",
+]
+
+df_construction_projects = pd.DataFrame({
+    "Project": CONSTRUCTION_PROJECTS,
+    "Budget at Completion (₪)": [410_000_000, 360_000_000, 335_000_000, 390_000_000, 300_000_000],
+    "Budget To Date (₪)": [235_000_000, 188_000_000, 165_000_000, 210_000_000, 152_000_000],
+    "Actual Cost To Date (₪)": [241_000_000, 196_000_000, 181_000_000, 214_000_000, 159_000_000],
+    "Open RFIs": [14, 23, 31, 17, 21],
+    "Active Subcontractors": [12, 15, 13, 11, 14],
+    "Safety Incidents MTD": [1, 2, 3, 1, 2],
+    "Delay Cost Range Low (₪/day)": [95_000, 85_000, 78_000, 90_000, 70_000],
+    "Delay Cost Range High (₪/day)": [390_000, 345_000, 320_000, 375_000, 290_000],
+})
+
+df_construction_schedule = pd.DataFrame({
+    "Project": [
+        "Ramat Gan North Towers", "Ramat Gan North Towers", "Ramat Gan North Towers", "Ramat Gan North Towers", "Ramat Gan North Towers", "Ramat Gan North Towers",
+        "Holon Mixed-Use Campus", "Holon Mixed-Use Campus", "Holon Mixed-Use Campus", "Holon Mixed-Use Campus", "Holon Mixed-Use Campus", "Holon Mixed-Use Campus",
+        "Jerusalem Central Offices", "Jerusalem Central Offices", "Jerusalem Central Offices", "Jerusalem Central Offices", "Jerusalem Central Offices", "Jerusalem Central Offices",
+        "Haifa Waterfront Residences", "Haifa Waterfront Residences", "Haifa Waterfront Residences", "Haifa Waterfront Residences", "Haifa Waterfront Residences", "Haifa Waterfront Residences",
+        "Beer Sheva Innovation Hub", "Beer Sheva Innovation Hub", "Beer Sheva Innovation Hub", "Beer Sheva Innovation Hub", "Beer Sheva Innovation Hub", "Beer Sheva Innovation Hub",
+    ],
+    "Work Package": [
+        "Foundations", "Structure", "Facade", "MEP Rough-In", "Interior Finishes", "Commissioning",
+        "Foundations", "Structure", "Facade", "MEP Rough-In", "Interior Finishes", "Commissioning",
+        "Foundations", "Structure", "Facade", "MEP Rough-In", "Interior Finishes", "Commissioning",
+        "Foundations", "Structure", "Facade", "MEP Rough-In", "Interior Finishes", "Commissioning",
+        "Foundations", "Structure", "Facade", "MEP Rough-In", "Interior Finishes", "Commissioning",
+    ],
+    "Weight (%)": [12, 22, 16, 19, 21, 10] * 5,
+    "Is Critical": [True, True, True, True, True, True] * 5,
+    "Baseline Start": [
+        "2025-02-01", "2025-05-15", "2025-09-01", "2025-10-15", "2026-01-10", "2026-05-20",
+        "2025-03-01", "2025-06-20", "2025-10-01", "2025-11-15", "2026-02-01", "2026-06-10",
+        "2025-02-15", "2025-06-01", "2025-09-20", "2025-11-10", "2026-01-20", "2026-05-15",
+        "2025-03-10", "2025-06-15", "2025-09-15", "2025-11-01", "2026-01-15", "2026-05-25",
+        "2025-04-01", "2025-07-01", "2025-10-20", "2025-12-01", "2026-02-10", "2026-06-20",
+    ],
+    "Baseline Finish": [
+        "2025-05-15", "2025-09-01", "2025-12-15", "2026-02-28", "2026-05-20", "2026-07-20",
+        "2025-06-20", "2025-10-01", "2026-01-20", "2026-03-20", "2026-06-10", "2026-08-15",
+        "2025-06-01", "2025-09-20", "2026-01-10", "2026-03-30", "2026-05-15", "2026-07-25",
+        "2025-06-15", "2025-09-15", "2025-12-30", "2026-03-10", "2026-05-25", "2026-08-05",
+        "2025-07-01", "2025-10-20", "2026-01-30", "2026-04-10", "2026-06-20", "2026-09-05",
+    ],
+    "Forecast Start": [
+        "2025-02-08", "2025-05-24", "2025-09-10", "2025-10-28", "2026-01-20", "2026-06-08",
+        "2025-03-08", "2025-07-05", "2025-10-20", "2025-12-03", "2026-02-20", "2026-07-03",
+        "2025-03-01", "2025-06-22", "2025-10-18", "2025-12-06", "2026-02-22", "2026-06-25",
+        "2025-03-15", "2025-06-28", "2025-09-25", "2025-11-20", "2026-01-25", "2026-06-12",
+        "2025-04-08", "2025-07-18", "2025-11-08", "2025-12-20", "2026-02-24", "2026-07-10",
+    ],
+    "Forecast Finish": [
+        "2025-05-24", "2025-09-10", "2025-12-30", "2026-03-14", "2026-06-08", "2026-08-04",
+        "2025-07-05", "2025-10-20", "2026-02-10", "2026-04-12", "2026-07-03", "2026-09-06",
+        "2025-06-22", "2025-10-18", "2026-02-14", "2026-04-26", "2026-06-25", "2026-09-02",
+        "2025-06-28", "2025-09-25", "2026-01-15", "2026-03-28", "2026-06-12", "2026-08-20",
+        "2025-07-18", "2025-11-08", "2026-02-24", "2026-05-05", "2026-07-10", "2026-09-30",
+    ],
+    "Actual Start": [
+        "2025-02-08", "2025-05-24", "2025-09-10", "2025-10-28", "2026-01-20", None,
+        "2025-03-08", "2025-07-05", "2025-10-20", "2025-12-03", "2026-02-20", None,
+        "2025-03-01", "2025-06-22", "2025-10-18", "2025-12-06", None, None,
+        "2025-03-15", "2025-06-28", "2025-09-25", "2025-11-20", "2026-01-25", None,
+        "2025-04-08", "2025-07-18", "2025-11-08", "2025-12-20", "2026-02-24", None,
+    ],
+    "Actual Finish": [
+        "2025-05-24", "2025-09-12", "2026-01-04", None, None, None,
+        "2025-07-10", "2025-10-30", None, None, None, None,
+        "2025-06-30", "2025-11-01", None, None, None, None,
+        "2025-06-30", "2025-10-02", "2026-01-28", None, None, None,
+        "2025-07-22", "2025-11-20", None, None, None, None,
+    ],
+})
+
+for _date_col in [
+    "Baseline Start", "Baseline Finish", "Forecast Start", "Forecast Finish", "Actual Start", "Actual Finish"
+]:
+    df_construction_schedule[_date_col] = pd.to_datetime(df_construction_schedule[_date_col], errors="coerce")
+
+
+def _bounded_progress(start, finish, as_of_ts: pd.Timestamp) -> float:
+    """Return bounded [0,1] progress for an activity between start and finish."""
+    if pd.isna(start) or pd.isna(finish):
+        return 0.0
+    if as_of_ts <= start:
+        return 0.0
+    if as_of_ts >= finish:
+        return 1.0
+    dur = max((finish - start).days, 1)
+    return float((as_of_ts - start).days / dur)
+
+
+def get_project_schedule_status(project: str, as_of_date=REF_DATE) -> dict:
+    """Compute schedule/cost status for one project at an as-of date."""
+    as_of_ts = pd.Timestamp(as_of_date)
+    sched = df_construction_schedule[df_construction_schedule["Project"] == project].copy()
+    meta = df_construction_projects[df_construction_projects["Project"] == project].iloc[0]
+
+    weights = sched["Weight (%)"].astype(float)
+    planned_w = 0.0
+    actual_w = 0.0
+
+    for _, row in sched.iterrows():
+        w = float(row["Weight (%)"])
+        planned_w += w * _bounded_progress(row["Baseline Start"], row["Baseline Finish"], as_of_ts)
+
+        if pd.notna(row["Actual Start"]):
+            actual_finish_ref = row["Actual Finish"] if pd.notna(row["Actual Finish"]) else row["Forecast Finish"]
+            actual_w += w * _bounded_progress(row["Actual Start"], actual_finish_ref, as_of_ts)
+        elif pd.notna(row["Actual Finish"]) and as_of_ts >= row["Actual Finish"]:
+            actual_w += w
+
+    planned_pct = planned_w / weights.sum() * 100.0 if weights.sum() else 0.0
+    actual_pct = actual_w / weights.sum() * 100.0 if weights.sum() else 0.0
+    gap_pts = actual_pct - planned_pct
+    spi = (actual_pct / planned_pct) if planned_pct > 0 else 1.0
+
+    bac = float(meta["Budget at Completion (₪)"])
+    ac = float(meta["Actual Cost To Date (₪)"])
+    ev = bac * (actual_pct / 100.0)
+    pv = bac * (planned_pct / 100.0)
+    cpi = (ev / ac) if ac > 0 else 1.0
+    eac = (ac / max(actual_pct / 100.0, 0.05)) if actual_pct > 0 else bac
+    eac_var_pct = ((eac - bac) / bac * 100.0) if bac else 0.0
+
+    baseline_finish = pd.to_datetime(sched["Baseline Finish"].max())
+    forecast_finish = pd.to_datetime(sched["Forecast Finish"].max())
+    delay_days = int((forecast_finish - baseline_finish).days)
+
+    overdue_critical = int(((sched["Is Critical"]) & (sched["Baseline Finish"] < as_of_ts) & (sched["Actual Finish"].isna())).sum())
+
+    if spi < 0.93 or cpi < 0.93 or overdue_critical > 0:
+        status = "Red"
+    elif spi < 0.98 or cpi < 0.98 or delay_days > 0:
+        status = "Amber"
+    else:
+        status = "Green"
+
+    return {
+        "Project": project,
+        "Planned % Today": round(planned_pct, 1),
+        "Actual % Today": round(actual_pct, 1),
+        "Gap (pts)": round(gap_pts, 1),
+        "SPI": round(spi, 2),
+        "CPI": round(cpi, 2),
+        "Delay Days": delay_days,
+        "Overdue Critical": overdue_critical,
+        "PV (₪)": pv,
+        "EV (₪)": ev,
+        "AC (₪)": ac,
+        "EAC (₪)": eac,
+        "EAC Var (%)": round(eac_var_pct, 1),
+        "BAC (₪)": bac,
+        "Status": status,
+        "Open RFIs": int(meta["Open RFIs"]),
+        "Low Delay Cost (₪/day)": float(meta["Delay Cost Range Low (₪/day)"]),
+        "High Delay Cost (₪/day)": float(meta["Delay Cost Range High (₪/day)"]),
+    }
+
+
+def get_construction_status_table(project: str = "All Projects", as_of_date=REF_DATE) -> pd.DataFrame:
+    """Return per-project status table at as-of date."""
+    selected = CONSTRUCTION_PROJECTS if project == "All Projects" else [project]
+    rows = [get_project_schedule_status(p, as_of_date=as_of_date) for p in selected]
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    _status_rank = {"Red": 0, "Amber": 1, "Green": 2}
+    df["_rank"] = df["Status"].map(_status_rank).fillna(3)
+    df = df.sort_values(["_rank", "Delay Days", "EAC Var (%)"], ascending=[True, False, False]).drop(columns=["_rank"])
+    return df.reset_index(drop=True)
+
+
+def get_construction_progress_curve(project: str = "All Projects") -> pd.DataFrame:
+    """Compute planned/actual progress curve over the last 12 monthly cutoffs."""
+    cutoffs = pd.date_range("2025-04-01", periods=12, freq="MS")
+    rows = []
+    selected = CONSTRUCTION_PROJECTS if project == "All Projects" else [project]
+
+    for d in cutoffs:
+        statuses = [get_project_schedule_status(p, as_of_date=d.date()) for p in selected]
+        if not statuses:
+            continue
+        planned = float(np.mean([s["Planned % Today"] for s in statuses]))
+        actual = float(np.mean([s["Actual % Today"] for s in statuses]))
+        rows.append({"Month": d.strftime("%b %Y"), "Planned (%)": round(planned, 1), "Actual (%)": round(actual, 1)})
+
+    return pd.DataFrame(rows)
+
+
+def get_construction_gantt(project: str = "All Projects", as_of_date=REF_DATE) -> pd.DataFrame:
+    """Return baseline and forecast/actual timeline rows for Gantt rendering."""
+    as_of_ts = pd.Timestamp(as_of_date)
+    sched = df_construction_schedule.copy()
+    if project != "All Projects":
+        sched = sched[sched["Project"] == project].copy()
+
+    rows = []
+    for _, row in sched.iterrows():
+        task = row["Work Package"] if project != "All Projects" else f"{row['Project']} | {row['Work Package']}"
+
+        rows.append({
+            "Project": row["Project"],
+            "Task": task,
+            "Track": "Baseline",
+            "Start": row["Baseline Start"],
+            "Finish": row["Baseline Finish"],
+            "Is Critical": bool(row["Is Critical"]),
+            "State": "Baseline",
+        })
+
+        run_start = row["Actual Start"] if pd.notna(row["Actual Start"]) else row["Forecast Start"]
+        run_finish = row["Actual Finish"] if pd.notna(row["Actual Finish"]) else row["Forecast Finish"]
+        if pd.notna(row["Actual Finish"]) and row["Actual Finish"] <= as_of_ts:
+            state = "Done"
+        elif row["Baseline Finish"] < as_of_ts and pd.isna(row["Actual Finish"]):
+            state = "Delayed"
+        elif bool(row["Is Critical"]):
+            state = "Critical"
+        else:
+            state = "In Progress"
+
+        rows.append({
+            "Project": row["Project"],
+            "Task": task,
+            "Track": "Forecast/Actual",
+            "Start": run_start,
+            "Finish": run_finish,
+            "Is Critical": bool(row["Is Critical"]),
+            "State": state,
+        })
+
+    return pd.DataFrame(rows)
+
+df_construction_progress = pd.DataFrame({
+    "Month": MONTHS,
+    "Planned (%)": [6, 12, 18, 26, 34, 43, 52, 61, 70, 79, 88, 96],
+    "Actual (%)": [5, 10, 16, 22, 30, 39, 47, 55, 63, 71, 79, 87],
+})
+
+df_construction_budget = pd.DataFrame({
+    "Month": MONTHS,
+    "Planned Spend (₪)": [
+        82_000_000, 85_000_000, 88_000_000, 90_000_000, 92_000_000, 94_000_000,
+        95_000_000, 97_000_000, 98_000_000, 100_000_000, 101_000_000, 103_000_000,
+    ],
+    "Actual Spend (₪)": [
+        84_000_000, 88_000_000, 90_000_000, 93_000_000, 95_000_000, 97_000_000,
+        99_000_000, 100_000_000, 102_000_000, 103_000_000, 105_000_000, 108_000_000,
+    ],
+})
+
+df_construction_safety = pd.DataFrame({
+    "Month": MONTHS,
+    "Lost Time Incidents": [0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1],
+    "Near Misses": [2, 3, 2, 4, 3, 2, 5, 3, 4, 5, 3, 4],
+    "Worker Hours": [175_000, 178_000, 181_000, 183_000, 186_000, 188_000, 191_000, 194_000, 196_000, 198_000, 201_000, 204_000],
+})
+
+df_construction_risks = pd.DataFrame({
+    "Risk ID": ["R-001", "R-002", "R-003", "R-004", "R-005", "R-006", "R-007"],
+    "Project": [
+        "Ramat Gan North Towers",
+        "Holon Mixed-Use Campus",
+        "Jerusalem Central Offices",
+        "Haifa Waterfront Residences",
+        "Beer Sheva Innovation Hub",
+        "Jerusalem Central Offices",
+        "Holon Mixed-Use Campus",
+    ],
+    "Category": ["Permits", "Supply Chain", "Concrete", "Design", "Labor", "MEP", "Safety"],
+    "Description": [
+        "Municipality permit extension delayed",
+        "Facade material lead-time increased",
+        "Concrete strength test rework",
+        "Late architectural IFC package",
+        "Skilled labor shortage in finishing phase",
+        "MEP coordination clashes",
+        "Repeated near-miss events in tower crane zone",
+    ],
+    "Probability (%)": [35, 40, 55, 30, 45, 50, 60],
+    "Impact (₪)": [7_500_000, 5_800_000, 9_200_000, 4_600_000, 6_700_000, 8_100_000, 3_900_000],
+    "Severity": ["High", "High", "Critical", "Medium", "High", "Critical", "Critical"],
+    "Owner": ["PMO", "Procurement", "QA/QC", "Design", "HR", "Engineering", "HSE"],
+})
+
+df_construction_milestones = pd.DataFrame({
+    "Project": [
+        "Ramat Gan North Towers",
+        "Holon Mixed-Use Campus",
+        "Jerusalem Central Offices",
+        "Haifa Waterfront Residences",
+        "Beer Sheva Innovation Hub",
+        "Jerusalem Central Offices",
+    ],
+    "Milestone": [
+        "Basement waterproofing complete",
+        "Tower A structure top-out",
+        "Facade package approved",
+        "MEP rough-in complete",
+        "Public utility connection",
+        "Final fire safety audit",
+    ],
+    "Planned Date": [
+        "2026-02-15",
+        "2026-03-10",
+        "2026-01-20",
+        "2026-04-05",
+        "2026-03-01",
+        "2026-02-28",
+    ],
+    "Forecast Date": [
+        "2026-02-22",
+        "2026-03-24",
+        "2026-04-15",
+        "2026-04-12",
+        "2026-03-18",
+        "2026-03-25",
+    ],
+    "Status": ["Done", "Open", "Open", "Open", "Open", "Open"],
+})
+
+
+def get_construction_snapshot(project: str = "All Projects") -> dict:
+    """Return aggregated KPIs for the construction PM dashboard."""
+    status_df = get_construction_status_table(project=project, as_of_date=REF_DATE)
+
+    if project == "All Projects":
+        risks = df_construction_risks.copy()
+        milestones = df_construction_milestones.copy()
+    else:
+        risks = df_construction_risks[df_construction_risks["Project"] == project].copy()
+        milestones = df_construction_milestones[df_construction_milestones["Project"] == project].copy()
+
+    if status_df.empty:
+        planned_progress = 0.0
+        actual_progress = 0.0
+        schedule_var = 0.0
+        spi = 1.0
+        cpi = 1.0
+        delay_days = 0
+        eac_var_pct = 0.0
+        planned_cost = 0.0
+        actual_cost = 0.0
+        delay_cost_low = 0.0
+        delay_cost_high = 0.0
+    else:
+        planned_progress = float(status_df["Planned % Today"].mean())
+        actual_progress = float(status_df["Actual % Today"].mean())
+        schedule_var = actual_progress - planned_progress
+        spi = float(status_df["EV (₪)"].sum() / max(status_df["PV (₪)"].sum(), 1.0))
+        cpi = float(status_df["EV (₪)"].sum() / max(status_df["AC (₪)"].sum(), 1.0))
+        delay_days = int(status_df["Delay Days"].max())
+        eac_var_pct = float((status_df["EAC (₪)"].sum() - status_df["BAC (₪)"].sum()) / max(status_df["BAC (₪)"].sum(), 1.0) * 100.0)
+        planned_cost = float(status_df["PV (₪)"].sum())
+        actual_cost = float(status_df["AC (₪)"].sum())
+        delay_cost_low = float(status_df["Low Delay Cost (₪/day)"].sum())
+        delay_cost_high = float(status_df["High Delay Cost (₪/day)"].sum())
+
+    budget_var_pct = ((actual_cost - planned_cost) / planned_cost * 100.0) if planned_cost else 0.0
+
+    critical_risks = int((risks["Severity"] == "Critical").sum()) if not risks.empty else 0
+    high_risks = int((risks["Severity"] == "High").sum()) if not risks.empty else 0
+
+    milestones = milestones.copy()
+    if not milestones.empty:
+        milestones["Planned Date"] = pd.to_datetime(milestones["Planned Date"]).dt.date
+        overdue_mask = (milestones["Planned Date"] < REF_DATE) & (milestones["Status"] != "Done")
+        overdue_milestones = int(overdue_mask.sum())
+    else:
+        overdue_milestones = 0
+
+    lti_ytd = int(df_construction_safety["Lost Time Incidents"].sum())
+    worker_hours_ytd = float(df_construction_safety["Worker Hours"].sum())
+    trir = (lti_ytd * 200_000.0 / worker_hours_ytd) if worker_hours_ytd else 0.0
+
+    return {
+        "planned_progress": planned_progress,
+        "actual_progress": actual_progress,
+        "schedule_var": schedule_var,
+        "spi": round(spi, 2),
+        "cpi": round(cpi, 2),
+        "delay_days": delay_days,
+        "planned_cost": planned_cost,
+        "actual_cost": actual_cost,
+        "budget_var_pct": budget_var_pct,
+        "eac_var_pct": round(eac_var_pct, 1),
+        "delay_cost_low": delay_cost_low,
+        "delay_cost_high": delay_cost_high,
+        "critical_risks": critical_risks,
+        "high_risks": high_risks,
+        "overdue_milestones": overdue_milestones,
+        "lti_ytd": lti_ytd,
+        "trir": trir,
+        "open_rfis": int(status_df["Open RFIs"].sum()) if not status_df.empty else 0,
+        "status_df": status_df,
+    }
 
 # ─────────────────────────────────────────────
 # 6. MOCK AI DOCUMENT EXTRACTION

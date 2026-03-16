@@ -18,7 +18,7 @@ st.set_page_config(
 # ── Imports ──────────────────────────────────────
 from style import inject_css, kpi_card
 from data import TOTAL_PORTFOLIO_VALUE, ENERGY_SAVINGS_OPP, TENANTS_AT_RISK, get_tenants_at_risk, get_energy_savings_opp
-from modules import asset_monitoring, ebitda_simulator, doc_intelligence, ai_agent, analytics_dashboard
+from modules import asset_monitoring, ebitda_simulator, doc_intelligence, ai_agent, analytics_dashboard, construction_pm
 
 # ── Inject global styles ────────────────────────
 inject_css()
@@ -41,6 +41,7 @@ with st.sidebar:
             "💰 EBITDA Simulator",
             "📄 AI Document Intelligence",
             "📈 Analytics Dashboard",
+            "🏗️ Construction Project Manager",
         ],
         index=0,
         label_visibility="collapsed",
@@ -97,6 +98,8 @@ elif "Document" in page:
     doc_intelligence.render()
 elif "Analytics" in page:
     analytics_dashboard.render()
+elif "Construction" in page:
+    construction_pm.render()
 
 # ── Floating AI Agent FAB ────────────────────────
 import re as _re
