@@ -454,6 +454,7 @@ df_construction_schedule = pd.DataFrame({
     ],
     "Weight (%)": [12, 22, 16, 19, 21, 10] * 5,
     "Is Critical": [True, True, True, True, True, True] * 5,
+    "Predecessor": [None, "Foundations", "Structure", "Facade", "MEP Rough-In", "Interior Finishes"] * 5,
     "Baseline Start": [
         "2025-02-01", "2025-05-15", "2025-09-01", "2025-10-15", "2026-01-10", "2026-05-20",
         "2025-03-01", "2025-06-20", "2025-10-01", "2025-11-15", "2026-02-01", "2026-06-10",
@@ -624,6 +625,11 @@ def get_construction_gantt(project: str = "All Projects", as_of_date=REF_DATE) -
     rows = []
     for _, row in sched.iterrows():
         task = row["Work Package"] if project != "All Projects" else f"{row['Project']} | {row['Work Package']}"
+        predecessor = row["Predecessor"]
+        predecessor_task = (
+            predecessor if project != "All Projects" or predecessor is None
+            else f"{row['Project']} | {predecessor}"
+        )
 
         rows.append({
             "Project": row["Project"],
@@ -633,6 +639,7 @@ def get_construction_gantt(project: str = "All Projects", as_of_date=REF_DATE) -
             "Finish": row["Baseline Finish"],
             "Is Critical": bool(row["Is Critical"]),
             "State": "Baseline",
+            "Predecessor Task": predecessor_task,
         })
 
         run_start = row["Actual Start"] if pd.notna(row["Actual Start"]) else row["Forecast Start"]
@@ -654,6 +661,7 @@ def get_construction_gantt(project: str = "All Projects", as_of_date=REF_DATE) -
             "Finish": run_finish,
             "Is Critical": bool(row["Is Critical"]),
             "State": state,
+            "Predecessor Task": predecessor_task,
         })
 
     return pd.DataFrame(rows)

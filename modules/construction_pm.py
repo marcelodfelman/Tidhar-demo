@@ -90,12 +90,12 @@ def _fallback_gantt(project: str = "All Projects", as_of_date=None) -> pd.DataFr
     _ = as_of_date
     proj = CONSTRUCTION_PROJECTS[0] if project == "All Projects" else project
     rows = [
-        {"Project": proj, "Task": "Foundations", "Track": "Baseline", "Start": pd.Timestamp("2025-10-01"), "Finish": pd.Timestamp("2025-12-15"), "State": "Baseline", "Is Critical": True},
-        {"Project": proj, "Task": "Foundations", "Track": "Forecast/Actual", "Start": pd.Timestamp("2025-10-05"), "Finish": pd.Timestamp("2025-12-28"), "State": "Done", "Is Critical": True},
-        {"Project": proj, "Task": "Structure", "Track": "Baseline", "Start": pd.Timestamp("2025-12-16"), "Finish": pd.Timestamp("2026-02-20"), "State": "Baseline", "Is Critical": True},
-        {"Project": proj, "Task": "Structure", "Track": "Forecast/Actual", "Start": pd.Timestamp("2025-12-29"), "Finish": pd.Timestamp("2026-03-12"), "State": "Delayed", "Is Critical": True},
-        {"Project": proj, "Task": "MEP Rough-In", "Track": "Baseline", "Start": pd.Timestamp("2026-02-21"), "Finish": pd.Timestamp("2026-04-10"), "State": "Baseline", "Is Critical": True},
-        {"Project": proj, "Task": "MEP Rough-In", "Track": "Forecast/Actual", "Start": pd.Timestamp("2026-03-13"), "Finish": pd.Timestamp("2026-04-28"), "State": "In Progress", "Is Critical": True},
+        {"Project": proj, "Task": "Foundations", "Track": "Baseline", "Start": pd.Timestamp("2025-10-01"), "Finish": pd.Timestamp("2025-12-15"), "State": "Baseline", "Is Critical": True, "Predecessor Task": None},
+        {"Project": proj, "Task": "Foundations", "Track": "Forecast/Actual", "Start": pd.Timestamp("2025-10-05"), "Finish": pd.Timestamp("2025-12-28"), "State": "Done", "Is Critical": True, "Predecessor Task": None},
+        {"Project": proj, "Task": "Structure", "Track": "Baseline", "Start": pd.Timestamp("2025-12-16"), "Finish": pd.Timestamp("2026-02-20"), "State": "Baseline", "Is Critical": True, "Predecessor Task": "Foundations"},
+        {"Project": proj, "Task": "Structure", "Track": "Forecast/Actual", "Start": pd.Timestamp("2025-12-29"), "Finish": pd.Timestamp("2026-03-12"), "State": "Delayed", "Is Critical": True, "Predecessor Task": "Foundations"},
+        {"Project": proj, "Task": "MEP Rough-In", "Track": "Baseline", "Start": pd.Timestamp("2026-02-21"), "Finish": pd.Timestamp("2026-04-10"), "State": "Baseline", "Is Critical": True, "Predecessor Task": "Structure"},
+        {"Project": proj, "Task": "MEP Rough-In", "Track": "Forecast/Actual", "Start": pd.Timestamp("2026-03-13"), "Finish": pd.Timestamp("2026-04-28"), "State": "In Progress", "Is Critical": True, "Predecessor Task": "Structure"},
     ]
     return pd.DataFrame(rows)
 
@@ -295,24 +295,68 @@ def render() -> None:
         )
 
     section_header("Dynamic Gantt - Baseline vs Forecast/Actual")
+    gc1, gc2 = st.columns([1, 1])
+    with gc1:
+        show_critical_only = st.checkbox("Show critical path only", value=False)
+    with gc2:
+        show_dependencies = st.checkbox("Show dependencies", value=True)
+
     if not gantt_df.empty:
+        if show_critical_only:
+            gantt_df = gantt_df[gantt_df["Is Critical"]].copy()
+
+        gantt_df["Gantt Color"] = gantt_df.apply(
+            lambda r: "Baseline" if r["Track"] == "Baseline" else str(r["State"]),
+            axis=1,
+        )
+
         fig_gantt = px.timeline(
             gantt_df,
             x_start="Start",
             x_end="Finish",
             y="Task",
-            color="Track",
-            color_discrete_map={"Baseline": "#5B6274", "Forecast/Actual": "#00CC99"},
+            color="Gantt Color",
+            color_discrete_map={
+                "Baseline": "#5B6274",
+                "Done": "#00CC99",
+                "In Progress": "#2E86FF",
+                "Critical": "#FFD93D",
+                "Delayed": "#FF4B4B",
+            },
             hover_data={
                 "Project": True,
                 "Track": True,
                 "State": True,
                 "Is Critical": True,
+                "Predecessor Task": True,
                 "Start": True,
                 "Finish": True,
                 "Task": False,
             },
         )
+
+        if show_dependencies:
+            run_rows = gantt_df[gantt_df["Track"] == "Forecast/Actual"].copy()
+            _lookup = {r["Task"]: r for _, r in run_rows.iterrows()}
+            _dep_legend_shown = False
+            for _, r in run_rows.iterrows():
+                pred = r.get("Predecessor Task")
+                if not pred or pred not in _lookup:
+                    continue
+                pred_row = _lookup[pred]
+                fig_gantt.add_trace(
+                    go.Scatter(
+                        x=[pred_row["Finish"], r["Start"]],
+                        y=[pred_row["Task"], r["Task"]],
+                        mode="lines",
+                        line=dict(color="#FFB020", width=1.6, dash="dot"),
+                        name="Dependency",
+                        hoverinfo="skip",
+                        showlegend=not _dep_legend_shown,
+                    )
+                )
+                _dep_legend_shown = True
+
         fig_gantt.update_layout(_CHART_LAYOUT)
         fig_gantt.update_layout(height=max(340, min(760, len(gantt_df["Task"].unique()) * 24)))
         _today_ts = pd.Timestamp(REF_DATE)
