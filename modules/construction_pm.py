@@ -8,17 +8,130 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+from datetime import date
 
 from style import section_header, kpi_card, alert_card, CARD_BG, ACCENT, RED, YELLOW
-from data import (
-    CONSTRUCTION_PROJECTS,
-    REF_DATE,
-    get_construction_snapshot,
-    get_construction_status_table,
-    get_construction_progress_curve,
-    get_construction_gantt,
-    df_construction_risks,
-    df_construction_milestones,
+import data as _data
+
+
+_HAS_CONSTRUCTION_DATA = all(
+    hasattr(_data, name)
+    for name in [
+        "CONSTRUCTION_PROJECTS",
+        "get_construction_snapshot",
+        "get_construction_status_table",
+        "get_construction_progress_curve",
+        "get_construction_gantt",
+        "df_construction_risks",
+        "df_construction_milestones",
+    ]
+)
+
+CONSTRUCTION_PROJECTS = getattr(_data, "CONSTRUCTION_PROJECTS", ["Demo Construction Project"])
+REF_DATE = getattr(_data, "REF_DATE", date(2026, 3, 1))
+
+
+def _fallback_snapshot(_project: str) -> dict:
+    return {
+        "planned_progress": 64.0,
+        "actual_progress": 58.0,
+        "schedule_var": -6.0,
+        "spi": 0.91,
+        "cpi": 0.96,
+        "delay_days": 18,
+        "planned_cost": 120_000_000.0,
+        "actual_cost": 126_000_000.0,
+        "budget_var_pct": 5.0,
+        "eac_var_pct": 4.2,
+        "delay_cost_low": 70_000.0,
+        "delay_cost_high": 250_000.0,
+        "critical_risks": 2,
+        "high_risks": 3,
+        "overdue_milestones": 2,
+        "lti_ytd": 3,
+        "trir": 1.8,
+        "open_rfis": 11,
+    }
+
+
+def _fallback_status_table(project: str = "All Projects", as_of_date=None) -> pd.DataFrame:
+    _ = as_of_date
+    rows = [
+        {
+            "Project": p,
+            "Status": "Amber",
+            "Planned % Today": 64.0,
+            "Actual % Today": 58.0,
+            "Gap (pts)": -6.0,
+            "SPI": 0.91,
+            "CPI": 0.96,
+            "Delay Days": 18,
+            "EAC Var (%)": 4.2,
+            "Overdue Critical": 2,
+            "Open RFIs": 11,
+        }
+        for p in (CONSTRUCTION_PROJECTS if project == "All Projects" else [project])
+    ]
+    return pd.DataFrame(rows)
+
+
+def _fallback_progress_curve(project: str = "All Projects") -> pd.DataFrame:
+    _ = project
+    return pd.DataFrame(
+        {
+            "Month": ["Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026", "Feb 2026", "Mar 2026"],
+            "Planned (%)": [36, 44, 51, 57, 61, 64],
+            "Actual (%)": [31, 38, 45, 50, 54, 58],
+        }
+    )
+
+
+def _fallback_gantt(project: str = "All Projects", as_of_date=None) -> pd.DataFrame:
+    _ = as_of_date
+    proj = CONSTRUCTION_PROJECTS[0] if project == "All Projects" else project
+    rows = [
+        {"Project": proj, "Task": "Foundations", "Track": "Baseline", "Start": pd.Timestamp("2025-10-01"), "Finish": pd.Timestamp("2025-12-15"), "State": "Baseline", "Is Critical": True},
+        {"Project": proj, "Task": "Foundations", "Track": "Forecast/Actual", "Start": pd.Timestamp("2025-10-05"), "Finish": pd.Timestamp("2025-12-28"), "State": "Done", "Is Critical": True},
+        {"Project": proj, "Task": "Structure", "Track": "Baseline", "Start": pd.Timestamp("2025-12-16"), "Finish": pd.Timestamp("2026-02-20"), "State": "Baseline", "Is Critical": True},
+        {"Project": proj, "Task": "Structure", "Track": "Forecast/Actual", "Start": pd.Timestamp("2025-12-29"), "Finish": pd.Timestamp("2026-03-12"), "State": "Delayed", "Is Critical": True},
+        {"Project": proj, "Task": "MEP Rough-In", "Track": "Baseline", "Start": pd.Timestamp("2026-02-21"), "Finish": pd.Timestamp("2026-04-10"), "State": "Baseline", "Is Critical": True},
+        {"Project": proj, "Task": "MEP Rough-In", "Track": "Forecast/Actual", "Start": pd.Timestamp("2026-03-13"), "Finish": pd.Timestamp("2026-04-28"), "State": "In Progress", "Is Critical": True},
+    ]
+    return pd.DataFrame(rows)
+
+
+get_construction_snapshot = getattr(_data, "get_construction_snapshot", _fallback_snapshot)
+get_construction_status_table = getattr(_data, "get_construction_status_table", _fallback_status_table)
+get_construction_progress_curve = getattr(_data, "get_construction_progress_curve", _fallback_progress_curve)
+get_construction_gantt = getattr(_data, "get_construction_gantt", _fallback_gantt)
+df_construction_risks = getattr(
+    _data,
+    "df_construction_risks",
+    pd.DataFrame(
+        {
+            "Risk ID": ["R-001"],
+            "Project": [CONSTRUCTION_PROJECTS[0]],
+            "Category": ["Schedule"],
+            "Description": ["Fallback data: update data.py construction block."],
+            "Severity": ["High"],
+            "Probability (%)": [50],
+            "Impact (₪)": [3_000_000],
+            "Owner": ["PMO"],
+        }
+    ),
+)
+df_construction_milestones = getattr(
+    _data,
+    "df_construction_milestones",
+    pd.DataFrame(
+        {
+            "Project": [CONSTRUCTION_PROJECTS[0]],
+            "Milestone": ["Fallback milestone"],
+            "Planned Date": ["2026-03-01"],
+            "Forecast Date": ["2026-03-20"],
+            "Status": ["Open"],
+        }
+    ),
 )
 
 
@@ -43,6 +156,12 @@ def _trend_text(value: float, invert: bool = False):
 
 def render() -> None:
     section_header("Construction Project Manager")
+    if not _HAS_CONSTRUCTION_DATA:
+        st.warning(
+            "Construction dataset not found in data.py on this environment. "
+            "Running with fallback demo data. Sync latest data.py to enable full analytics.",
+            icon="⚠️",
+        )
     st.caption(
         "Planned = expected completion by today (baseline). "
         "Actual = certified execution by today. Gap = Actual - Planned."
