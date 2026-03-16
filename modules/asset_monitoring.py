@@ -226,7 +226,7 @@ def render(selected_project=None):
         .map(_color_days, subset=["Days to Expiry"])
         .format({
             "Monthly Rent (₪)": "₪{:,.0f}",
-            "Churn Risk": "{:.3f}",
+            "Churn Risk": "{:.2f}",
             "Activity Score": "{:.2f}",
         })
     )

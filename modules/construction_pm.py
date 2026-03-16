@@ -154,6 +154,12 @@ def _trend_text(value: float, invert: bool = False):
     return (f"{arrow} {abs(value):.1f}", color)
 
 
+def _force_two_decimal_hover(fig):
+    """Force 2-decimal precision in numeric hover tooltips."""
+    fig.update_xaxes(hoverformat=".2f")
+    fig.update_yaxes(hoverformat=".2f")
+
+
 def render() -> None:
     section_header("Construction Project Manager")
     if not _HAS_CONSTRUCTION_DATA:
@@ -254,6 +260,7 @@ def render() -> None:
         fig1.update_layout(height=320)
         fig1.update_yaxes(title_text="Completion (%)", range=[0, 100], gridcolor="#2A2F3B")
         fig1.update_xaxes(gridcolor="#2A2F3B")
+        _force_two_decimal_hover(fig1)
         st.plotly_chart(fig1, use_container_width=True)
 
     with c2:
@@ -272,6 +279,7 @@ def render() -> None:
         fig2.update_layout(height=320)
         fig2.update_yaxes(title_text="Cost (M₪)", gridcolor="#2A2F3B")
         fig2.update_xaxes(gridcolor="#2A2F3B")
+        _force_two_decimal_hover(fig2)
         st.plotly_chart(fig2, use_container_width=True)
 
     section_header("Project Status Board (Action-Oriented)")
@@ -383,6 +391,7 @@ def render() -> None:
         )
         fig_gantt.update_yaxes(autorange="reversed", gridcolor="#2A2F3B")
         fig_gantt.update_xaxes(gridcolor="#2A2F3B")
+        _force_two_decimal_hover(fig_gantt)
         st.plotly_chart(fig_gantt, use_container_width=True)
     else:
         st.info("No Gantt data available for selected scope.")
