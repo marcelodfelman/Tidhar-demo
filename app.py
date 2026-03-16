@@ -23,10 +23,14 @@ from modules import asset_monitoring, ebitda_simulator, doc_intelligence, ai_age
 # ── Inject global styles ────────────────────────
 inject_css()
 
+# Keep navigation state stable when AI actions push a target module.
+if "nav_to" in st.session_state:
+    st.session_state["page_nav"] = st.session_state.pop("nav_to")
+
 # ── AI Agent Dialog ─────────────────────────────
 @st.dialog("🤖 AI Agent — Portfolio Insights", width="large")
 def show_ai_agent():
-    ai_agent.render_insights()
+    ai_agent.render_insights(current_page=st.session_state.get("active_page"))
 
 # ── Sidebar ─────────────────────────────────────
 with st.sidebar:
@@ -44,8 +48,10 @@ with st.sidebar:
             "🏗️ Construction Project Manager",
         ],
         index=0,
+        key="page_nav",
         label_visibility="collapsed",
     )
+    st.session_state["active_page"] = page
 
     st.markdown("---")
     st.markdown(
@@ -59,7 +65,7 @@ with st.sidebar:
 
     # ── AI Agent sidebar button ──────────────────
     st.markdown("---")
-    _alert_count = ai_agent.get_alert_count()
+    _alert_count = ai_agent.get_alert_count(current_page=page)
     _badge_html = (
         f" <span style='background:#FF4B4B; color:#fff; border-radius:50%; "
         f"padding:1px 7px; font-size:0.72rem; font-weight:700; margin-left:4px;'>"
@@ -85,10 +91,6 @@ with k3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Nav-to handler (from AI Agent action buttons) ──────────────
-if "nav_to" in st.session_state:
-    page = st.session_state.pop("nav_to")
-
 # ── Page Router ─────────────────────────────────
 if "Asset Monitoring" in page:
     asset_monitoring.render()
@@ -105,7 +107,7 @@ elif "Construction" in page:
 import re as _re
 import streamlit.components.v1 as _components
 
-_fab_insights = ai_agent.generate_insights()
+_fab_insights = ai_agent.generate_insights(current_page=st.session_state.get("active_page", page))
 _fab_count = len([i for i in _fab_insights if i["severity"] in ("critical", "warning")])
 
 # Alert preview bubble — positioned fixed via CSS
