@@ -20,8 +20,12 @@ from style import inject_css, kpi_card
 from data import TOTAL_PORTFOLIO_VALUE, ENERGY_SAVINGS_OPP, TENANTS_AT_RISK, get_tenants_at_risk, get_energy_savings_opp
 from modules import asset_monitoring, ebitda_simulator, doc_intelligence, ai_agent, analytics_dashboard, construction_pm
 
+# ── Theme state ─────────────────────────────────
+if "theme" not in st.session_state:
+    st.session_state["theme"] = "Light"
+
 # ── Inject global styles ────────────────────────
-inject_css()
+inject_css(st.session_state.get("theme", "Light"))
 
 # Keep navigation state stable when AI actions push a target module.
 if "nav_to" in st.session_state:
@@ -36,6 +40,7 @@ def show_ai_agent():
 with st.sidebar:
     st.markdown("## 🏗️ Deeply - Hospitality Demo")
     st.markdown("### 2026 Strategic Portal")
+    st.radio("Theme", ["Light", "Dark"], key="theme", horizontal=True)
     st.markdown("---")
 
     page = st.radio(

@@ -8,6 +8,7 @@ import streamlit as st
 from datetime import date
 import pandas as pd
 from typing import Any, cast
+from style import get_theme_tokens
 
 # ── Data imports (robust to partial datasets across environments) ───────────
 import data as _data
@@ -487,6 +488,7 @@ def render_insights(current_page: str | None = None):
     On action-button click, stores nav_to in session_state and shows a toast.
     """
     insights = generate_insights(current_page=current_page)
+    t = get_theme_tokens()
 
     if not insights:
         st.success("✅ No active alerts for this section.")
@@ -500,15 +502,15 @@ def render_insights(current_page: str | None = None):
     st.markdown(
         f"""
         <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
-            <span style="background:#FF4B4B22; color:#FF4B4B; border:1px solid #FF4B4B;
+            <span style="background:{_SEVERITY_COLOR['critical']}22; color:{_SEVERITY_COLOR['critical']}; border:1px solid {_SEVERITY_COLOR['critical']};
                           border-radius:20px; padding:4px 14px; font-size:0.82rem; font-weight:700;">
                 🔴 {n_critical} Critical
             </span>
-            <span style="background:#FFD93D22; color:#FFD93D; border:1px solid #FFD93D;
+            <span style="background:{_SEVERITY_COLOR['warning']}22; color:{_SEVERITY_COLOR['warning']}; border:1px solid {_SEVERITY_COLOR['warning']};
                           border-radius:20px; padding:4px 14px; font-size:0.82rem; font-weight:700;">
                 ⚠️ {n_warning} Warning
             </span>
-            <span style="background:#00CC9922; color:#00CC99; border:1px solid #00CC99;
+            <span style="background:{_SEVERITY_COLOR['info']}22; color:{_SEVERITY_COLOR['info']}; border:1px solid {_SEVERITY_COLOR['info']};
                           border-radius:20px; padding:4px 14px; font-size:0.82rem; font-weight:700;">
                 ℹ️ {n_info} Info
             </span>
@@ -519,16 +521,16 @@ def render_insights(current_page: str | None = None):
 
     # ── Per-insight cards ────────────────────────────────────────────────────
     for idx, insight in enumerate(insights):
-        color = _SEVERITY_COLOR.get(insight["severity"], "#AAAAAA")
+        color = _SEVERITY_COLOR.get(insight["severity"], t["TEXT_SUBTLE"])
         label = _SEVERITY_LABEL.get(insight["severity"], "")
 
         st.markdown(
             f"""
-            <div style="background:#1A1F2B; border-left:4px solid {color};
+            <div style="background:{t['CARD_BG']}; border-left:4px solid {color};
                          border-radius:8px; padding:16px 20px; margin:8px 0;">
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
                     <span style="font-size:1.2rem;">{insight['icon']}</span>
-                    <span style="font-weight:700; color:#FFFFFF; font-size:0.97rem;">
+                    <span style="font-weight:700; color:{t['TEXT']}; font-size:0.97rem;">
                         {insight['title']}
                     </span>
                     <span style="margin-left:auto; background:{color}33; color:{color};
@@ -537,7 +539,7 @@ def render_insights(current_page: str | None = None):
                         {label}
                     </span>
                 </div>
-                <div style="color:#CFD8DC; font-size:0.85rem; line-height:1.5;">
+                <div style="color:{t['TEXT_MUTED']}; font-size:0.85rem; line-height:1.5;">
                     {insight['body']}
                 </div>
             </div>

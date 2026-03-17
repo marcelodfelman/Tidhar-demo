@@ -8,11 +8,12 @@ import json
 import time
 
 from data import MOCK_LEASE_CLAUSE, MOCK_AI_EXTRACTION
-from style import section_header, ACCENT, CARD_BG, TEXT, RED, YELLOW
+from style import section_header, ACCENT, CARD_BG, TEXT, RED, get_theme_tokens
 
 
 def render():
     """Main render function for the Document Intelligence page."""
+    t = get_theme_tokens()
 
     section_header("AI Document Intelligence")
 
@@ -55,9 +56,9 @@ def render():
             st.markdown(f"""
             <div style="background:{CARD_BG}; border-left:4px solid {ACCENT};
                         border-radius:8px; padding:18px 22px; margin:4px 0;">
-                <div style="font-size:0.78rem; color:#808080; text-transform:uppercase;
+                <div style="font-size:0.78rem; color:{t['TEXT_SUBTLE']}; text-transform:uppercase;
                             letter-spacing:1px; margin-bottom:4px;">Expiration Date</div>
-                <div style="font-size:1.5rem; font-weight:700; color:#FFFFFF;">
+                <div style="font-size:1.5rem; font-weight:700; color:{t['TEXT']};">
                     {MOCK_AI_EXTRACTION["extracted_fields"]["expiration_date"]}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -66,9 +67,9 @@ def render():
             st.markdown(f"""
             <div style="background:{CARD_BG}; border-left:4px solid {ACCENT};
                         border-radius:8px; padding:18px 22px; margin:4px 0;">
-                <div style="font-size:0.78rem; color:#808080; text-transform:uppercase;
+                <div style="font-size:0.78rem; color:{t['TEXT_SUBTLE']}; text-transform:uppercase;
                             letter-spacing:1px; margin-bottom:4px;">Index Linkage</div>
-                <div style="font-size:1.1rem; font-weight:700; color:#FFFFFF;">
+                <div style="font-size:1.1rem; font-weight:700; color:{t['TEXT']};">
                     {MOCK_AI_EXTRACTION["extracted_fields"]["index_linkage"]}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -77,9 +78,9 @@ def render():
             st.markdown(f"""
             <div style="background:{CARD_BG}; border-left:4px solid {ACCENT};
                         border-radius:8px; padding:18px 22px; margin:4px 0;">
-                <div style="font-size:0.78rem; color:#808080; text-transform:uppercase;
+                <div style="font-size:0.78rem; color:{t['TEXT_SUBTLE']}; text-transform:uppercase;
                             letter-spacing:1px; margin-bottom:4px;">Renewal Option</div>
-                <div style="font-size:1.1rem; font-weight:700; color:#FFFFFF;">
+                <div style="font-size:1.1rem; font-weight:700; color:{t['TEXT']};">
                     {MOCK_AI_EXTRACTION["extracted_fields"]["renewal_option"]}</div>
             </div>
             """, unsafe_allow_html=True)

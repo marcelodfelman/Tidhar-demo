@@ -14,11 +14,13 @@ from data import (
     LABOR_EBITDA_SENSITIVITY,
     EBITDA_TARGET_FLOOR,
 )
-from style import section_header, kpi_card, ACCENT, RED, CARD_BG, TEXT, NAVY
+from style import section_header, kpi_card, ACCENT, RED, TEXT, NAVY, get_chart_layout, get_theme_tokens
 
 
 def render():
     """Main render function for the EBITDA Simulator page."""
+    t = get_theme_tokens()
+    chart_layout = get_chart_layout()
 
     section_header("Strategic EBITDA Simulator")
 
@@ -148,18 +150,16 @@ def render():
         annotation_font=dict(color=RED, size=11),
     )
 
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor=CARD_BG,
-        plot_bgcolor=CARD_BG,
-        font=dict(color="#FFFFFF"),
+    _layout = dict(chart_layout)
+    _layout.update(
         height=480,
         margin=dict(l=20, r=20, t=30, b=20),
         yaxis=dict(title="₪ (ILS)", tickformat=",",
-                   title_font=dict(color="#FFFFFF"), tickfont=dict(color="#E0E0E0")),
-        xaxis=dict(tickfont=dict(color="#E0E0E0")),
+                   title_font=dict(color=t["TEXT"]), tickfont=dict(color=t["TEXT"])),
+        xaxis=dict(tickfont=dict(color=t["TEXT"])),
         showlegend=False,
     )
+    fig.update_layout(_layout)
 
     st.plotly_chart(fig, use_container_width=True)
 

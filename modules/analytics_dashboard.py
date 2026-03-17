@@ -20,7 +20,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from style import kpi_card, section_header, CARD_BG, ACCENT, RED, YELLOW
+from style import kpi_card, section_header, ACCENT, RED, YELLOW, get_chart_layout, get_theme_tokens
 from data import (
     MONTHS,
     TOTAL_ROOMS,
@@ -41,17 +41,6 @@ from data import (
     df_epor_project,
 )
 
-# ─── Shared chart layout ──────────────────────────────────────────────────────
-_CHART_LAYOUT = dict(
-    template="plotly_dark",
-    paper_bgcolor=CARD_BG,
-    plot_bgcolor=CARD_BG,
-    font=dict(color="#E8E8E8", size=11),
-    margin=dict(l=44, r=20, t=38, b=40),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10, font_color="#E8E8E8", orientation="h", y=1.12),
-)
-
-
 # ─── Helper ───────────────────────────────────────────────────────────────────
 def _slice(df: pd.DataFrame, start: int, end: int) -> pd.DataFrame:
     """Return rows [start … end] inclusive, reset index."""
@@ -69,6 +58,8 @@ def _force_two_decimal_hover(fig):
 # ─────────────────────────────────────────────────────────────────────────────
 def render() -> None:
     section_header("📈 Analytics Dashboard")
+    t = get_theme_tokens()
+    chart_layout = get_chart_layout()
 
     # ── Time Filter ───────────────────────────────────────────────────────────
     f_col, _ = st.columns([3, 1])
@@ -234,15 +225,15 @@ def render() -> None:
             ),
             secondary_y=True,
         )
-        fig1.update_layout(_CHART_LAYOUT)
+        fig1.update_layout(chart_layout)
         fig1.update_layout(height=320)
         fig1.update_yaxes(
             title_text="Revenue (₪)", secondary_y=False,
-            gridcolor="#2A2F3B", tickformat=",",
+            gridcolor=t["GRID"], tickformat=",",
         )
         fig1.update_yaxes(
             title_text="NOI (₪)", secondary_y=True,
-            gridcolor="#2A2F3B", tickformat=",",
+            gridcolor=t["GRID"], tickformat=",",
         )
         _force_two_decimal_hover(fig1)
         st.plotly_chart(fig1, use_container_width=True)
@@ -274,12 +265,12 @@ def render() -> None:
             ),
             secondary_y=False,
         )
-        fig2.update_layout(_CHART_LAYOUT)
+        fig2.update_layout(chart_layout)
         fig2.update_layout(height=320)
         fig2.update_yaxes(title_text="₪ / Room", secondary_y=False,
-                          gridcolor="#2A2F3B", tickformat=",")
+                  gridcolor=t["GRID"], tickformat=",")
         fig2.update_yaxes(title_text="Occupancy %", secondary_y=True,
-                          gridcolor="#2A2F3B", range=[0, 100])
+                  gridcolor=t["GRID"], range=[0, 100])
         _force_two_decimal_hover(fig2)
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -301,10 +292,10 @@ def render() -> None:
             name="CPOR (₪)", mode="lines+markers",
             line=dict(color=RED, width=2.5), marker=dict(size=5),
         ))
-        fig_sp.update_layout(_CHART_LAYOUT)
+        fig_sp.update_layout(chart_layout)
         fig_sp.update_layout(
             height=320,
-            yaxis=dict(gridcolor="#2A2F3B", tickformat=",", title="₪ / Room"),
+            yaxis=dict(gridcolor=t["GRID"], tickformat=",", title="₪ / Room"),
         )
         _force_two_decimal_hover(fig_sp)
         st.plotly_chart(fig_sp, use_container_width=True)
@@ -327,11 +318,11 @@ def render() -> None:
             annotation_position="top right",
             annotation_font_color=YELLOW,
         )
-        fig_ep.update_layout(_CHART_LAYOUT)
+        fig_ep.update_layout(chart_layout)
         fig_ep.update_layout(
             height=320,
-            xaxis=dict(gridcolor="#2A2F3B", title="kWh / Occupied Room"),
-            yaxis=dict(gridcolor="#2A2F3B"),
+            xaxis=dict(gridcolor=t["GRID"], title="kWh / Occupied Room"),
+            yaxis=dict(gridcolor=t["GRID"]),
         )
         _force_two_decimal_hover(fig_ep)
         st.plotly_chart(fig_ep, use_container_width=True)
@@ -353,12 +344,12 @@ def render() -> None:
             text=[f"{r:.0%}" for r in _churn_sorted["Churn Risk"]],
             textposition="outside", opacity=0.9,
         ))
-        fig_ch.update_layout(_CHART_LAYOUT)
+        fig_ch.update_layout(chart_layout)
         fig_ch.update_layout(
             height=440,
-            xaxis=dict(range=[0, 1.15], gridcolor="#2A2F3B",
+            xaxis=dict(range=[0, 1.15], gridcolor=t["GRID"],
                        title="Churn Risk Score", tickformat=".0%"),
-            yaxis=dict(gridcolor="#2A2F3B"),
+            yaxis=dict(gridcolor=t["GRID"]),
         )
         _force_two_decimal_hover(fig_ch)
         st.plotly_chart(fig_ch, use_container_width=True)
@@ -372,15 +363,15 @@ def render() -> None:
             x=_tl["Expiry"], y=_tl["Monthly Rent (₪)"],
             mode="markers+text",
             marker=dict(size=14, color=_tl_colors, opacity=0.85,
-                        line=dict(width=1, color="#FFFFFF")),
+                        line=dict(width=1, color=t["TEXT"])),
             text=_tl["Tenant"], textposition="top center",
-            textfont=dict(size=8, color="#E8E8E8"),
+            textfont=dict(size=8, color=t["TEXT"]),
         ))
-        fig_tl.update_layout(_CHART_LAYOUT)
+        fig_tl.update_layout(chart_layout)
         fig_tl.update_layout(
             height=440,
-            xaxis=dict(gridcolor="#2A2F3B", title="Lease Expiry Date"),
-            yaxis=dict(gridcolor="#2A2F3B", tickformat=",", title="Monthly Rent (₪)"),
+            xaxis=dict(gridcolor=t["GRID"], title="Lease Expiry Date"),
+            yaxis=dict(gridcolor=t["GRID"], tickformat=",", title="Monthly Rent (₪)"),
         )
         _force_two_decimal_hover(fig_tl)
         st.plotly_chart(fig_tl, use_container_width=True)
@@ -418,11 +409,11 @@ def render() -> None:
                 marker_color=color,
                 opacity=0.85,
             ))
-        fig3.update_layout(_CHART_LAYOUT)
+        fig3.update_layout(chart_layout)
         fig3.update_layout(
             height=320,
             barmode="group",
-            yaxis=dict(range=[50, 100], gridcolor="#2A2F3B", title="Availability (%)"),
+            yaxis=dict(range=[50, 100], gridcolor=t["GRID"], title="Availability (%)"),
         )
         _force_two_decimal_hover(fig3)
         st.plotly_chart(fig3, use_container_width=True)
@@ -443,11 +434,11 @@ def render() -> None:
                 marker_color=color,
                 opacity=0.85,
             ))
-        fig4.update_layout(_CHART_LAYOUT)
+        fig4.update_layout(chart_layout)
         fig4.update_layout(
             height=320,
             barmode="stack",
-            yaxis=dict(gridcolor="#2A2F3B", title="Headcount"),
+            yaxis=dict(gridcolor=t["GRID"], title="Headcount"),
         )
         _force_two_decimal_hover(fig4)
         st.plotly_chart(fig4, use_container_width=True)
@@ -474,11 +465,11 @@ def render() -> None:
                 marker_color=color,
                 opacity=0.85,
             ))
-        fig5.update_layout(_CHART_LAYOUT)
+        fig5.update_layout(chart_layout)
         fig5.update_layout(
             height=320,
             barmode="stack",
-            yaxis=dict(gridcolor="#2A2F3B", tickformat=",", title="Cost (₪)"),
+            yaxis=dict(gridcolor=t["GRID"], tickformat=",", title="Cost (₪)"),
         )
         _force_two_decimal_hover(fig5)
         st.plotly_chart(fig5, use_container_width=True)
@@ -497,11 +488,11 @@ def render() -> None:
             textposition="outside",
             opacity=0.9,
         ))
-        fig6.update_layout(_CHART_LAYOUT)
+        fig6.update_layout(chart_layout)
         fig6.update_layout(
             height=320,
-            xaxis=dict(range=[0, 112], gridcolor="#2A2F3B", title="Utilization (%)"),
-            yaxis=dict(gridcolor="#2A2F3B"),
+            xaxis=dict(range=[0, 112], gridcolor=t["GRID"], title="Utilization (%)"),
+            yaxis=dict(gridcolor=t["GRID"]),
         )
         _force_two_decimal_hover(fig6)
         st.plotly_chart(fig6, use_container_width=True)

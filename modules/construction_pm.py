@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import date
 
-from style import section_header, kpi_card, alert_card, CARD_BG, ACCENT, RED, YELLOW
+from style import section_header, kpi_card, alert_card, ACCENT, RED, YELLOW, get_chart_layout, get_theme_tokens
 import data as _data
 
 
@@ -135,16 +135,6 @@ df_construction_milestones = getattr(
 )
 
 
-_CHART_LAYOUT = dict(
-    template="plotly_dark",
-    paper_bgcolor=CARD_BG,
-    plot_bgcolor=CARD_BG,
-    font=dict(color="#E8E8E8", size=11),
-    margin=dict(l=42, r=20, t=36, b=36),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10, font_color="#E8E8E8", orientation="h", y=1.1),
-)
-
-
 def _trend_text(value: float, invert: bool = False):
     if abs(value) < 0.1:
         return ("- Stable", YELLOW)
@@ -162,6 +152,8 @@ def _force_two_decimal_hover(fig):
 
 def render() -> None:
     section_header("Construction Project Manager")
+    t = get_theme_tokens()
+    chart_layout = get_chart_layout()
     if not _HAS_CONSTRUCTION_DATA:
         st.warning(
             "Construction dataset not found in data.py on this environment. "
@@ -256,10 +248,10 @@ def render() -> None:
                 line=dict(color=ACCENT, width=2.4),
             )
         )
-        fig1.update_layout(_CHART_LAYOUT)
+        fig1.update_layout(chart_layout)
         fig1.update_layout(height=320)
-        fig1.update_yaxes(title_text="Completion (%)", range=[0, 100], gridcolor="#2A2F3B")
-        fig1.update_xaxes(gridcolor="#2A2F3B")
+        fig1.update_yaxes(title_text="Completion (%)", range=[0, 100], gridcolor=t["GRID"])
+        fig1.update_xaxes(gridcolor=t["GRID"])
         _force_two_decimal_hover(fig1)
         st.plotly_chart(fig1, use_container_width=True)
 
@@ -275,10 +267,10 @@ def render() -> None:
                 name="As-of Today",
             )
         )
-        fig2.update_layout(_CHART_LAYOUT)
+        fig2.update_layout(chart_layout)
         fig2.update_layout(height=320)
-        fig2.update_yaxes(title_text="Cost (M₪)", gridcolor="#2A2F3B")
-        fig2.update_xaxes(gridcolor="#2A2F3B")
+        fig2.update_yaxes(title_text="Cost (M₪)", gridcolor=t["GRID"])
+        fig2.update_xaxes(gridcolor=t["GRID"])
         _force_two_decimal_hover(fig2)
         st.plotly_chart(fig2, use_container_width=True)
 
@@ -365,7 +357,8 @@ def render() -> None:
                 )
                 _dep_legend_shown = True
 
-        fig_gantt.update_layout(_CHART_LAYOUT)
+        fig_gantt.update_layout(chart_layout)
+        fig_gantt.update_layout(legend_title_text="", legend_font_color=t["TEXT"])
         fig_gantt.update_layout(height=max(340, min(760, len(gantt_df["Task"].unique()) * 24)))
         _today_ts = pd.Timestamp(REF_DATE)
         # add_vline can fail with Timestamp on some Plotly/Pandas combinations,
@@ -389,8 +382,8 @@ def render() -> None:
             showarrow=False,
             font=dict(color=YELLOW),
         )
-        fig_gantt.update_yaxes(autorange="reversed", gridcolor="#2A2F3B")
-        fig_gantt.update_xaxes(gridcolor="#2A2F3B")
+        fig_gantt.update_yaxes(autorange="reversed", gridcolor=t["GRID"])
+        fig_gantt.update_xaxes(gridcolor=t["GRID"])
         _force_two_decimal_hover(fig_gantt)
         st.plotly_chart(fig_gantt, use_container_width=True)
     else:

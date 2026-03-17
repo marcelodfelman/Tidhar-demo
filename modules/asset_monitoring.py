@@ -16,11 +16,13 @@ from data import (
     ENERGY_COST_PER_KWH, ENERGY_WASTE_FACTOR,
     OCC_ALERT_THRESHOLD, NRG_ALERT_THRESHOLD,
 )
-from style import section_header, alert_card, NAVY, ACCENT, RED, YELLOW, GREY, CARD_BG, TEXT
+from style import section_header, alert_card, ACCENT, RED, YELLOW, get_chart_layout, get_theme_tokens
 
 
 def render(selected_project=None):
     """Main render function for the Asset Monitoring page."""
+    t = get_theme_tokens()
+    chart_layout = get_chart_layout()
 
     # ── Project filter ──────────────────────────────────────────────────────
     project = st.selectbox(
@@ -135,24 +137,22 @@ def render(selected_project=None):
             secondary_y=True,
         )
 
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor=CARD_BG,
-        plot_bgcolor=CARD_BG,
-        font=dict(color=TEXT),
+    _layout = dict(chart_layout)
+    _layout.update(
         barmode="group",
         height=440,
         margin=dict(l=20, r=20, t=40, b=20),
         legend=dict(
             orientation="h", yanchor="bottom", y=-0.35,
-            xanchor="center", x=0.5, font=dict(size=11, color="#FFFFFF"),
+            xanchor="center", x=0.5, font=dict(size=11, color=t["TEXT"]),
         ),
     )
+    fig.update_layout(_layout)
     fig.update_yaxes(title_text="Occupancy (%)", secondary_y=False, range=[0, 100],
-                      title_font=dict(color="#FFFFFF"), tickfont=dict(color="#E0E0E0"))
+                      title_font=dict(color=t["TEXT"]), tickfont=dict(color=t["TEXT"]))
     fig.update_yaxes(title_text="Energy (kWh)", secondary_y=True,
-                      title_font=dict(color="#FFFFFF"), tickfont=dict(color="#E0E0E0"))
-    fig.update_xaxes(tickfont=dict(color="#E0E0E0"))
+                      title_font=dict(color=t["TEXT"]), tickfont=dict(color=t["TEXT"]))
+    fig.update_xaxes(tickfont=dict(color=t["TEXT"]))
 
     st.plotly_chart(fig, use_container_width=True)
 
